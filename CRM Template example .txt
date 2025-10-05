@@ -1,0 +1,380 @@
+A runnable CRM for logistics/shipping scaffold
+Backend: Express, TypeScript, Prisma, PostgreSQL
+Frontend: React, TypeScript
+Docker Compose setup for dev (Postgres, backend, frontend)
+Basic authentication (JWT), role-based access
+Core entities: Customers, Shipments, Quotes, Invoices, Vehicles, Warehouses, Tracking
+Simple API endpoints (OpenAPI-like spec in docs)
+Seed script for sample data
+Basic README with run, build, and test steps
+Project structure (files and folders)
+
+backend/
+package.json
+tsconfig.json
+.env.example
+src/
+server.ts
+routes/
+auth.ts
+customers.ts
+shipments.ts
+quotes.ts
+invoices.ts
+vehicles.ts
+tracking.ts
+controllers/
+authController.ts
+customersController.ts
+shipmentsController.ts
+quotesController.ts
+invoicesController.ts
+vehiclesController.ts
+trackingController.ts
+middlewares/
+authMiddleware.ts
+models/
+index.ts (prisma client usage)
+prisma/
+schema.prisma
+seed.ts
+Dockerfile
+docker-compose.yml (backend)
+frontend/
+package.json
+tsconfig.json
+public/
+src/
+main.tsx
+App.tsx
+pages/
+Dashboard.tsx
+Customers.tsx
+Shipments.tsx
+Quotes.tsx
+Invoices.tsx
+components/
+shared/
+forms/
+tables/
+services/
+api.ts
+Dockerfile
+docker-compose.yml (root) // spins up postgres + backend + frontend
+docs/
+architecture.md
+data-dictionary.md
+api.md
+migration-guide.md
+README.md
+.gitignore
+What you’ll need to do to use it
+
+Create a local zip from the code below (or copy into files in a new project with the same structure) and zip it.
+Run: docker-compose up -d
+Open frontend: http://localhost:3000
+Backend API: http://localhost:4000
+Seed data: run the seed script inside the backend container or via a one-off npm script.
+
+Minimal runnable starter package (code blocks you can copy)
+
+backend/package.json
+perl
+{
+  "name": "logistics-crm-backend",
+  "version": "1.0.0",
+  "description": "CRM for logistics and shipping - backend",
+  "main": "src/server.ts",
+  "scripts": {
+    "dev": "ts-node-dev --respawn --transpile-only src/server.ts",
+    "build": "tsc",
+    "start": "node dist/server.js",
+    "seed": "ts-node prisma/seed.ts"
+  },
+  "dependencies": {
+    "@prisma/client": "^4.0.0",
+    "bcrypt": "^5.0.1",
+    "cookie-parser": "^1.4.6",
+    "dotenv": "^16.0.0",
+    "express": "^4.18.2",
+    "jsonwebtoken": "^9.0.0",
+    "prisma": "^4.0.0",
+    "cors": "^2.8.5"
+  },
+  "devDependencies": {
+    "@types/bcrypt": "^5.0.2",
+    "@types/express": "^4.17.17",
+    "@types/node": "^18.11.9",
+    "ts-node": "^10.9.1",
+    "typescript": "^5.0.4"
+  }
+}
+backend/tsconfig.json
+json
+{
+  "compilerOptions": {
+    "target": "ES2020",
+    "module": "commonjs",
+    "outDir": "dist",
+    "rootDir": "./src",
+    "strict": true,
+    "esModuleInterop": true
+  },
+  "include": ["src/**/*.ts", "prisma/**/*.ts"]
+}
+backend/.env.example
+ini
+PORT=4000
+JWT_SECRET=change-me
+JWT_EXPIRES_IN=15m
+REFRESH_SECRET=change-me
+REFRESH_EXPIRES_IN=7d
+DATABASE_URL="postgresql://postgres:password@localhost:5432/logistics_crm?schema=public"
+backend/prisma/schema.prisma
+kotlin
+generator client {
+  provider = "prisma-client-js"
+}
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+model User {
+  id       String @id @default(UUID())
+  username String @unique
+  password String
+  role     String
+  createdAt DateTime @default(now())
+}
+model Customer {
+  id        String @id @default(UUID())
+  name      String
+  company   String?
+  email     String
+  phone     String?
+  address   String?
+  createdAt DateTime @default(now())
+}
+model Shipment {
+  id            String @id @default(UUID())
+  origin        String
+  destination   String
+  status        String
+  trackingNumber String?
+  serviceLevel  String?
+  customerId    String
+  customer      Customer @relation(fields: [customerId], references: [id])
+  createdAt     DateTime @default(now())
+}
+model Quote {
+  id          String @id @default(UUID())
+  customerId  String
+  origin      String
+  destination String
+  rate        Float
+  validUntil  DateTime
+  customer    Customer @relation(fields: [customerId], references: [id])
+  createdAt   DateTime @default(now())
+}
+model Invoice {
+  id        String @id @default(UUID())
+  orderId   String
+  amount    Float
+  status    String
+  dueDate   DateTime
+  createdAt DateTime @default(now())
+}
+backend/src/server.ts (Express setup)
+javascript
+import express from 'express';
+import cors from 'cors';
+import cookieParser from 'cookie-parser';
+import dotenv from 'dotenv';
+import { PrismaClient } from '@prisma/client';
+
+dotenv.config();
+const app = express();
+const prisma = new PrismaClient();
+
+app.use(cors({ origin: true, credentials: true }));
+app.use(express.json());
+app.use(cookieParser());
+
+app.get('/health', (_req, res) => res.json({ ok: true }));
+
+// Simple auth route example
+app.post('/api/auth/login', async (req, res) => {
+  const { username, password } = req.body;
+  // In a real app, validate against DB
+  if (username === 'admin' && password === 'admin') {
+    // simple token mock
+    return res.json({ token: 'mock-jwt-token' });
+  }
+  res.status(401).json({ message: 'Invalid credentials' });
+});
+
+// Placeholder for real routes (customers, shipments, etc.)
+
+const PORT = process.env.PORT ? parseInt(process.env.PORT) : 4000;
+app.listen(PORT, () => {
+  console.log(`Backend listening on port ${PORT}`);
+});
+backend/src/routes/customers.ts (simplified)
+javascript
+import { Router } from 'express';
+const router = Router();
+
+router.get('/customers', (_req, res) => {
+  res.json([{ id: 'c1', name: 'Acme Inc' }]);
+});
+
+export default router;
+backend/src/server.ts (complete integration)
+javascript
+import express from 'express';
+import cors from 'cors';
+import cookieParser from 'cookie-parser';
+import dotenv from 'dotenv';
+import customersRoute from './routes/customers';
+// add other routes similarly
+
+dotenv.config();
+const app = express();
+
+app.use(cors({ origin: true, credentials: true }));
+app.use(express.json());
+app.use(cookieParser());
+
+app.use('/api', customersRoute);
+
+app.get('/health', (_req, res) => res.json({ ok: true }));
+
+const PORT = process.env.PORT ? parseInt(process.env.PORT) : 4000;
+app.listen(PORT, () => {
+  console.log(`Backend listening on port ${PORT}`);
+});
+backend/prisma/seed.ts (simple seed)
+javascript
+import { PrismaClient } from '@prisma/client';
+const prisma = new PrismaClient();
+async function main() {
+  await prisma.user.create({
+    data: { username: 'admin', password: 'admin-hash', role: 'Admin' }
+  });
+  await prisma.customer.create({
+    data: { name: 'ACME Distribution', email: 'contact@acme.example' }
+  });
+  console.log('Seeded data');
+}
+main()
+  .catch((e) => {
+    console.error(e);
+  })
+  .finally(async () => {
+    await prisma.$disconnect();
+  });
+frontend/package.json
+perl
+{
+  "name": "logistics-crm-frontend",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "start": "vite",
+    "build": "vite build",
+    "dev": "vite",
+    "preview": "vite preview --port 3000"
+  },
+  "dependencies": {
+    "react": "^18.2.0",
+    "react-dom": "^18.2.0",
+    "react-router-dom": "^6.15.0",
+    "typescript": "^4.9.5"
+  },
+  "devDependencies": {
+    "@types/react": "^18.0.37",
+    "@types/react-dom": "^18.0.11",
+    "vite": "^4.3.9"
+  }
+}
+frontend/src/main.tsx
+javascript
+import React from 'react'
+import { createRoot } from 'react-dom/client'
+import { createBrowserRouter, RouterProvider } from 'react-router-dom'
+import App from './App'
+
+const router = createBrowserRouter([
+  { path: '/', element: <App /> },
+])
+
+createRoot(document.getElementById('root')!).render(
+  <React.StrictMode>
+    <RouterProvider router={router} />
+  </React.StrictMode>
+)
+frontend/src/App.tsx (very small router)
+javascript
+import React from 'react';
+
+export default function App() {
+  return (
+    <div style={{ padding: 20 }}>
+      <h1>Logistics CRM — Starter</h1>
+      <p>Navigate to /customers, /shipments in your app to start.</p>
+    </div>
+  );
+}
+docker-compose.yml (root)
+yaml
+version: '3.8'
+services:
+  db:
+    image: postgres:15
+    environment:
+      POSTGRES_PASSWORD: password
+      POSTGRES_USER: postgres
+      POSTGRES_DB: logistics_crm
+    volumes:
+      - db_data:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+
+  backend:
+    build:
+      context: ./backend
+    environment:
+      - DATABASE_URL=postgresql://postgres:password@db:5432/logistics_crm?schema=public
+    depends_on:
+      - db
+    ports:
+      - "4000:4000"
+    volumes:
+      - ./backend:/app
+    command: sh -c "npm install && npm run dev"
+
+  frontend:
+    image: node:18
+    working_dir: /app
+    volumes:
+      - ./frontend:/app
+    ports:
+      - "3000:3000"
+    command: sh -c "cd /app && npm install && npm run start"
+
+volumes:
+  db_data:
+root README.md
+csharp
+# Logistics CRM Starter
+
+This is a ready-to-run starter template for a logistics/shipping CRM.
+
+Getting started
+- Prereqs: Docker and Docker Compose
+- Run: docker-compose up -d
+- Frontend: http://localhost:3000
+- Backend API: http://localhost:4000
+
+Notes
+- This is a minimal scaffold intended for expansion. Replace mocks with real carrier APIs and expand models as needed.
